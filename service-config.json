@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "supabaseUrl": "https://lnlewhjrppwmwjfchwqi.supabase.co",
+  "publishableKey": "sb_publishable_9_ndC0Lwqs32zlaUzTbMHQ_s51dEQs8",
+  "siteUrl": "https://director.herr-li.com",
+  "emailEnabled": true,
+  "githubEnabled": true
+}

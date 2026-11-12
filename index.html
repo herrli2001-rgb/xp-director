@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0d0f12">
+  <meta name="description" content="XP Director 影视创作工作台。搜索选题、拆解参考片、制作分镜与竖屏图文。">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://lnlewhjrppwmwjfchwqi.supabase.co; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <link rel="icon" href="./assets/studio/brand-full.png">
+  <link rel="stylesheet" href="./styles.css">
+  <script defer src="./vendor/supabase.js"></script>
+  <title>XP Director · 影视创作工作台</title>
+</head>
+<body>
+  <a class="skip" href="#main">跳到工作台</a>
+  <div class="shell">
+    <aside class="rail" aria-label="工作台导航">
+      <a class="brand" href="https://herr-li.com/" title="返回 herr-li.com">
+        <span class="brand-mark" aria-hidden="true">XP</span><span>XP <strong>Director</strong><small>XP STUDIO</small></span>
+      </a>
+      <nav class="navigation" aria-label="功能">
+        <button type="button" data-view="overview" aria-current="page"><i class="nav-icon aperture" aria-hidden="true"></i> 影片项目</button>
+        <button type="button" data-view="storyboard"><i class="nav-icon board" aria-hidden="true"></i> 分镜板</button>
+        <button type="button" data-view="assets"><i class="nav-icon folder" aria-hidden="true"></i> 素材库</button>
+        <button type="button" data-view="review"><i class="nav-icon check" aria-hidden="true"></i> 审片与交付</button>
+        <button type="button" data-view="trends"><i class="nav-icon graph" aria-hidden="true"></i> 趋势研究</button>
+        <button type="button" data-view="watch"><i class="nav-icon play" aria-hidden="true"></i> 竞品拆解</button>
+        <button type="button" data-view="photos"><i class="nav-icon photo" aria-hidden="true"></i> 竖屏图文</button>
+      </nav>
+      <div class="project-switch">
+        <label for="project-list">本机项目</label>
+        <select id="project-list"></select>
+      </div>
+      <div class="rail-footer">
+        <button class="quiet-button" type="button" data-models>模型设置</button>
+        <button class="quiet-button" type="button" data-feedback>意见反馈</button>
+      </div>
+    </aside>
+
+    <main class="main" id="main">
+      <header class="topbar">
+        <span id="view-label" class="breadcrumb">影片项目</span>
+        <div class="topbar-actions">
+          <span class="runtime-chip" id="runtime-label">网页工作台</span>
+          <button class="button" type="button" data-feedback>反馈</button>
+          <button class="button" type="button" id="new-project">＋ 新建</button>
+          <button class="button primary" type="button" id="top-account">登录 / 注册</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <section data-panel="overview">
+          <div class="page-heading project-heading">
+            <div><div class="eyebrow" id="project-kind">示例项目</div><h1 id="project-title">雨夜之后</h1></div>
+            <div class="heading-actions"><span id="project-spec" class="muted"></span><button type="button" class="button" id="rename-project">重命名</button></div>
+          </div>
+
+          <div class="director-grid">
+            <section class="panel brief-panel" aria-labelledby="brief-title">
+              <h2 id="brief-title">创意简报</h2>
+              <label>故事想法<textarea id="brief-input" rows="5" maxlength="3000" placeholder="写下人物、处境和你想拍的瞬间。"></textarea></label>
+              <div class="fields-two">
+                <label>画幅<select id="project-ratio"><option>9:16</option><option>16:9</option><option>1:1</option></select></label>
+                <label>目标秒数<input id="project-duration" type="number" min="10" max="180" step="1"></label>
+              </div>
+              <label>画风<select id="project-look"><option value="realistic">现实电影感</option><option value="documentary">手机纪实感</option><option value="graphic">风格化</option></select></label>
+              <div class="stack-actions">
+                <button class="button primary" id="generate-plan" type="button" disabled>用模型写分镜</button>
+                <button class="button" id="outline-plan" type="button">用模板起稿</button>
+              </div>
+              <p id="brief-status" class="notice" role="status"></p>
+            </section>
+
+            <section class="panel stage-panel" aria-labelledby="stage-title">
+              <div class="panel-heading">
+                <h2 id="stage-title">镜头预览</h2>
+                <div class="segmented" id="preview-ratios" aria-label="预览画幅">
+                  <button type="button" data-ratio="9:16" aria-pressed="true">9:16</button>
+                  <button type="button" data-ratio="16:9" aria-pressed="false">16:9</button>
+                  <button type="button" data-ratio="1:1" aria-pressed="false">1:1</button>
+                </div>
+              </div>
+              <div class="stage"><div class="stage-viewport" id="stage-viewport" data-ratio="9:16"></div></div>
+              <div class="stage-caption"><span id="stage-caption">参考帧</span><button class="quiet-button" type="button" id="open-storyboard">打开分镜板 ↗</button></div>
+            </section>
+
+            <section class="panel inspector" aria-labelledby="shot-title">
+              <h2 id="shot-title">当前镜头</h2>
+              <div class="shot-info"><span class="eyebrow" id="shot-code"></span><h3 id="shot-name"></h3><p id="shot-action"></p></div>
+              <dl class="shot-meta">
+                <div><dt>机位与运镜</dt><dd id="shot-camera"></dd></div>
+                <div><dt>时长</dt><dd id="shot-duration"></dd></div>
+                <div><dt>首尾帧</dt><dd id="shot-frames"></dd></div>
+                <div><dt>视频模型</dt><dd id="shot-model">待连接</dd></div>
+              </dl>
+              <div class="stack-actions">
+                <button class="button" id="edit-current-shot" type="button">编辑镜头</button>
+                <button class="button accent" id="open-video" type="button">准备 Seedance 任务</button>
+              </div>
+              <p class="notice" id="shot-status" role="status"></p>
+            </section>
+          </div>
+
+          <section class="panel timeline-panel" aria-labelledby="timeline-heading">
+            <div class="panel-heading"><div><h2 id="timeline-heading">镜头顺序</h2><p id="timeline-summary" class="muted"></p></div><button class="button" id="add-shot" type="button">＋ 添加镜头</button></div>
+            <div class="timeline-track" id="timeline-track"></div>
+          </section>
+        </section>
+
+        <section data-panel="storyboard" hidden>
+          <div class="page-heading"><h1>分镜板</h1><button class="button primary" id="storyboard-add" type="button">＋ 添加镜头</button></div>
+          <div class="fields-two story-fields">
+            <label class="panel">剧本<textarea id="story-text" rows="4" maxlength="8000" placeholder="记录开场、转折和结尾。"></textarea></label>
+            <label class="panel">画风与连续性<textarea id="design-text" rows="4" maxlength="6000" placeholder="记录人物特征、道具、环境和光线。"></textarea></label>
+          </div>
+          <div id="storyboard-grid" class="card-grid"></div>
+        </section>
+
+        <section data-panel="assets" hidden>
+          <div class="page-heading"><div><h1>素材库</h1><p class="muted">可将图片和片段关联到项目中的镜头。</p></div><label class="button file-button">＋ 导入素材<input type="file" id="asset-input" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/wav" multiple></label></div>
+          <p class="notice" id="asset-status" role="status"></p>
+          <div id="asset-grid" class="card-grid"></div>
+        </section>
+
+        <section data-panel="review" hidden>
+          <div class="page-heading"><h1>审片与交付</h1><button class="button primary" id="export-project" type="button">导出制作记录 ZIP</button></div>
+          <div class="fields-two">
+            <section class="panel tool-panel"><h2>复核记录</h2><div id="review-checklist"></div><p class="muted">更改故事、镜头或关联素材后，需重新核对相关项。</p></section>
+            <section class="panel tool-panel">
+              <h2>粗剪预览</h2><p class="muted">按分镜顺序拼接已选片段，保留源声。</p>
+              <div class="heading-actions"><button class="button accent" id="render-film" type="button" disabled>合成 MP4</button><a class="button" id="download-film" download="xp-director.mp4" hidden>下载 MP4</a></div>
+              <p class="notice" id="render-status" role="status"></p><video id="film-preview" class="film-preview" controls playsinline hidden></video>
+            </section>
+          </div>
+        </section>
+
+        <section data-panel="trends" hidden>
+          <div class="page-heading"><div><h1>趋势研究</h1><p class="muted">按平台查看同一关键词的样本。再次采集后可查看重叠作品的播放增量。</p></div></div>
+          <section class="panel tool-panel">
+            <form id="trend-form" class="inline-form">
+              <label>关键词<input id="trend-keyword" maxlength="120" required placeholder="如：悬疑竖屏短片"></label>
+              <label>平台<select id="trend-platform"><option value="bilibili">哔哩哔哩</option><option value="xiaohongshu">小红书</option><option value="douyin">抖音</option><option value="x">X / Twitter</option></select></label>
+              <button class="button primary" type="submit" id="trend-submit" disabled>搜索并记录</button>
+              <label class="button file-button">导入采集 JSON<input type="file" id="trend-import" accept="application/json,.json"></label>
+            </form>
+            <p class="notice" id="trend-status" role="status"></p><div id="trend-results"></div>
+          </section>
+        </section>
+
+        <section data-panel="watch" hidden>
+          <div class="page-heading"><div><h1>竞品拆解</h1><p class="muted">用 Bubble Watch 提取有时间戳的画面和字幕。</p></div></div>
+          <section class="panel tool-panel">
+            <form id="watch-form">
+              <div class="fields-two"><label>视频链接<input id="watch-url" type="url" placeholder="粘贴公开视频链接"></label><label>本地视频<input id="watch-file" type="file" accept="video/mp4,video/quicktime,video/webm"></label></div>
+              <label>分析重点<input id="watch-question" maxlength="500" placeholder="如：前 5 秒怎么建立悬念"></label>
+              <div class="check-options"><label><input id="watch-analyze" type="checkbox">用已配置模型分析样帧或字幕</label><label><input id="watch-transcribe" type="checkbox" disabled>无字幕时用 Groq 转写音频</label></div>
+              <button class="button primary" type="submit" id="watch-submit" disabled>拆解视频</button>
+            </form>
+            <p class="notice" id="watch-status" role="status"></p><div id="watch-results"></div>
+          </section>
+        </section>
+
+        <section data-panel="photos" hidden>
+          <div class="page-heading"><div><h1>竖屏图文</h1><p class="muted">9:16 手机纪实风，字幕叠在画面中上方。</p></div><button class="button primary" id="export-photos" type="button">导出图文 ZIP</button></div>
+          <section class="panel tool-panel">
+            <form id="photos-form" class="inline-form">
+              <label>题材<input id="photo-brief" maxlength="500" placeholder="用一句话描述这组图文"></label>
+              <label>页数<input id="photo-count" type="number" min="2" max="12" value="6"></label>
+              <button class="button accent" type="submit" id="photo-plan" disabled>用模型写逐页分镜</button>
+              <button class="button" id="add-page" type="button">＋ 添加一页</button>
+            </form>
+            <p id="photo-status" class="notice" role="status"></p>
+          </section>
+          <div class="card-grid photo-grid" id="photo-grid"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <dialog class="modal" id="project-dialog" aria-labelledby="project-dialog-title">
+    <div class="modal-top"><h2 id="project-dialog-title">新建项目</h2><button type="button" class="close" data-close aria-label="关闭">×</button></div>
+    <form id="project-form"><label>项目名称<input id="project-name" maxlength="64" required></label><button class="button primary" type="submit">保存项目</button></form>
+  </dialog>
+
+  <dialog class="modal modal-wide" id="shot-dialog" aria-labelledby="shot-dialog-title">
+    <div class="modal-top"><h2 id="shot-dialog-title">编辑镜头</h2><button type="button" class="close" data-close aria-label="关闭">×</button></div>
+    <form id="shot-form">
+      <div class="fields-two"><label>镜头名称<input id="edit-title" required maxlength="80"></label><label>剪辑秒数<input id="edit-seconds" type="number" required min="1" max="120"></label></div>
+      <label>可见动作<textarea id="edit-action" rows="3" maxlength="2000"></textarea></label>
+      <label>景别、机位与运镜<input id="edit-camera" maxlength="200"></label>
+      <div class="fields-two"><label>首帧构图<textarea id="edit-first-description" rows="2" maxlength="1200"></textarea></label><label>尾帧构图<textarea id="edit-last-description" rows="2" maxlength="1200"></textarea></label></div>
+      <div class="fields-two"><label>首帧素材<select id="edit-first"></select></label><label>尾帧素材<select id="edit-last"></select></label></div>
+      <label>已审阅视频片段<select id="edit-clip"></select></label>
+      <label>视频提示词<textarea id="edit-prompt" rows="4" maxlength="6000" placeholder="画风、镜头、构图与配色、人物、逐秒、声音、约束"></textarea></label>
+      <div class="dialog-actions">
+        <button class="button" type="button" data-generate-frame="first" disabled>用模型生成首帧</button>
+        <button class="button" type="button" data-generate-frame="last" disabled>用模型生成尾帧</button>
+      </div>
+      <p class="notice" id="frame-status" role="status"></p>
+      <div class="dialog-actions"><button class="button primary" type="submit">保存镜头</button><button class="button" id="remove-shot" type="button" hidden>移除镜头</button></div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="video-dialog" aria-labelledby="video-title">
+    <div class="modal-top"><h2 id="video-title">Seedance 镜头生成</h2><button type="button" class="close" data-close aria-label="关闭">×</button></div>
+    <p class="muted" id="video-spec"></p>
+    <form id="video-form">
+      <div class="fields-two"><label>生成秒数<input id="video-seconds" type="number" min="1" max="20" required></label><label>该镜预估费用<input id="video-estimate" type="number" min="0.01" step="0.01" placeholder="人民币 ¥" required></label></div>
+      <label class="checkbox"><input id="video-consent" type="checkbox" required>我已核对提示词、首尾帧、模型规格与估价，同意提交计费任务。</label>
+      <div class="heading-actions"><button class="button primary" id="video-submit" type="submit">提交一次</button><button class="button" id="video-query" type="button" hidden>查询已有任务</button></div>
+      <p class="notice" id="video-status" role="status"></p>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="models-dialog" aria-labelledby="models-title">
+    <div class="modal-top"><h2 id="models-title">模型设置</h2><button type="button" class="close" data-close aria-label="关闭">×</button></div>
+    <p id="models-local-note" class="muted"></p>
+    <dl class="model-status" id="model-status"></dl>
+    <label>文本默认线路<select id="model-select" aria-label="文本默认线路"></select></label>
+    <details id="connection-settings" hidden>
+      <summary>配置模型连接</summary>
+      <form id="connection-form">
+        <label>模型用途<select id="connection-kind"><option value="harness">文本 · DeepSeek Harness</option><option value="compatible">文本 · 兼容 API</option><option value="image">生图 · 兼容 API</option><option value="vision">拆解 · 视觉 API</option><option value="video">视频 · 方舟 Seedance</option></select></label>
+        <label id="connection-url-field" hidden>服务地址<input id="connection-url" type="url" placeholder="https://服务商地址/v1" maxlength="700"></label>
+        <label>模型 ID<input id="connection-model" required maxlength="180" value="deepseek-v4-flash"></label>
+        <label>API 密钥<input id="connection-key" type="password" maxlength="4000" autocomplete="off"></label>
+        <button class="button primary" id="connection-save" type="submit">应用到本次运行</button>
+        <p class="notice" id="connection-notice" role="status"></p>
+      </form>
+    </details>
+    <p class="muted">此处配置仅在本次运行有效。长期配置可写在本机的 .env 文件中。</p>
+    <a class="button" id="open-local" href="http://127.0.0.1:4178/" target="_blank" rel="noopener noreferrer">打开本机工作台 ↗</a>
+  </dialog>
+
+  <dialog class="modal" id="auth-dialog" aria-labelledby="auth-title">
+    <div class="modal-top"><h2 id="auth-title">登录</h2><button type="button" class="close" data-close aria-label="关闭">×</button></div>
+    <div class="segmented" id="auth-options" aria-label="账号操作"><button type="button" data-auth-mode="login">登录</button><button type="button" data-auth-mode="signup">注册</button></div>
+    <form id="auth-form">
+      <label id="auth-name-field" hidden>显示名称<input id="auth-name" maxlength="60" autocomplete="nickname"></label>
+      <label id="auth-email-field">邮箱<input id="auth-email" type="email" maxlength="254" autocomplete="email" required></label>
+      <label id="auth-password-field">密码<input id="auth-password" type="password" maxlength="128" autocomplete="current-password" required></label>
+      <p id="auth-notice" class="notice" role="status"></p>
+      <button class="button primary" type="submit" id="auth-submit">登录</button>
+      <button class="button" type="button" id="github-auth" hidden>使用 GitHub 继续</button>
+      <button class="quiet-button only-login" type="button" data-auth-mode="reset">忘记密码</button>
+      <button class="quiet-button" type="button" id="auth-back" data-auth-mode="login" hidden>返回登录</button>
+    </form>
+    <p class="muted">可使用已有 XP 账号。项目和媒体保存在当前浏览器。</p>
+  </dialog>
+
+  <dialog class="modal" id="feedback-dialog" aria-labelledby="feedback-title">
+    <div class="modal-top"><h2 id="feedback-title">意见反馈</h2><button type="button" class="close" data-close aria-label="关闭">×</button></div>
+    <form id="feedback-form">
+      <label>问题类型<select id="feedback-category"><option value="bug">使用问题 / 报错</option><option value="suggestion">功能建议</option><option value="account">账号问题</option><option value="other">其他</option></select></label>
+      <label>标题<input id="feedback-subject" required minlength="3" maxlength="120"></label>
+      <label>描述<textarea id="feedback-body" rows="4" required minlength="10" maxlength="10000"></textarea></label>
+      <label class="checkbox"><input type="checkbox" required>同意将所填内容、产品和版本提交给 XP 反馈管理员。</label>
+      <div id="feedback-confirm" hidden><strong>发送内容预览</strong><pre id="feedback-preview"></pre></div>
+      <p class="notice" id="feedback-notice" role="status"></p><button class="button primary" type="submit" id="feedback-submit">预览反馈</button>
+    </form>
+    <details class="feedback-history"><summary>我的反馈</summary><ul id="feedback-history"></ul></details>
+  </dialog>
+
+  <dialog class="modal" id="replace-dialog" aria-labelledby="replace-title">
+    <div class="modal-top"><h2 id="replace-title">替换当前分镜</h2><button type="button" class="close" data-close aria-label="关闭">×</button></div>
+    <p class="muted">当前分镜中的文字与素材关联将由新方案替换。已导入的媒体仍在素材库里。</p>
+    <form method="dialog" class="dialog-actions"><button class="button" value="cancel">返回</button><button class="button primary" value="replace">替换</button></form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
