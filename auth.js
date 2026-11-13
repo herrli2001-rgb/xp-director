@@ -1,3 +1,5 @@
+import { alignInkNav, animate, hideInkSheet, showInkSheet } from "./assets/ink/motion.js?v=40115cd331b5";
+
 const $ = (selector) => document.querySelector(selector);
 const authDialog = () => $("#auth-dialog");
 const feedbackDialog = () => $("#feedback-dialog");
@@ -9,6 +11,9 @@ let client, config, user, emailToken, mode = "login", afterLogin = false;
 let verification = 0;
 let authBusy = false;
 let feedbackAttempt;
+let feedbackBusy = false;
+let feedbackListVersion = 0;
+const authForm = () => $("#auth-form");
 
 function notice(id, message = "", kind = "") {
   const element = $(id);
@@ -18,7 +23,14 @@ function notice(id, message = "", kind = "") {
 
 function changeMode(next) {
   mode = next;
-  $("#auth-form").dataset.mode = mode;
+  const dialog = authDialog();
+  const nested = mode === "reset" || mode === "newPassword";
+  const titles = { login: "登录", signup: "注册", reset: "找回密码", newPassword: "设置新密码", verify: "验证你的邮箱" };
+  const form = authForm();
+  const container = nested ? $("#auth-sheet-content") : $("#auth-page");
+  if (form.parentElement !== container) container.prepend(form);
+  if (!nested) hideInkSheet(dialog, true);
+  form.dataset.mode = mode;
   $("#auth-password").value = "";
   $("#auth-password").autocomplete = ["signup", "newPassword"].includes(mode) ? "new-password" : "current-password";
   $("#auth-password").required = ["login", "signup", "newPassword"].includes(mode);
@@ -29,30 +41,36 @@ function changeMode(next) {
   $("#auth-password-field").hidden = !$("#auth-password").required;
   $("#auth-options").hidden = !["login", "signup"].includes(mode);
   $("#github-auth").hidden = !config?.githubEnabled || !["login", "signup"].includes(mode);
-  $("#auth-back").hidden = ["login", "signup"].includes(mode);
   $("#auth-submit").textContent = ({
     login: "登录", signup: "创建账号", reset: "发送重置邮件",
     newPassword: "保存新密码", verify: "确认邮箱"
   })[mode];
-  $("#auth-title").textContent = ({
-    login: "登录", signup: "注册", reset: "找回密码",
-    newPassword: "设置新密码", verify: "验证你的邮箱"
-  })[mode];
   document.querySelectorAll("[data-auth-mode]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.authMode === mode));
   });
+  if (nested) {
+    if (!dialog.open) dialog.showModal();
+    $("#auth-sheet-title").textContent = titles[mode];
+    showInkSheet(dialog, "auth-sheet-title");
+  } else {
+    $("#auth-title").textContent = titles[mode];
+    alignInkNav($("#auth-options"));
+    animate($("#auth-page"), "ink-page-in");
+  }
   notice("#auth-notice");
 }
 
 function updateUser(next) {
   if (user?.id !== next?.id) {
+    ++feedbackListVersion;
     feedbackForm().reset();
     clearPreview();
     $("#feedback-history").replaceChildren();
+    notice("#feedback-history-note");
     notice("#feedback-notice");
   }
   user = next;
-  $("#top-account").textContent = user ? "退出登录" : "登录 / 注册";
+  $("#account-label").textContent = user ? "退出登录" : "登录 / 注册";
 }
 
 async function verifiedUser(session) {
@@ -85,23 +103,59 @@ function redact(text) {
     .replace(/\b[A-Z]:\\[^\n]+|\/(?:Users|home)\/[^\s]+/gi, "[本机路径已隐藏]");
 }
 
+const feedbackStatus = (status) => ({ open: "待处理", investigating: "跟进中", resolved: "已解决" })[status] || status;
+
+function feedbackPage(page) {
+  $("#feedback-write").hidden = page !== "write";
+  $("#feedback-records").hidden = page !== "history";
+  for (const control of document.querySelectorAll("[data-feedback-page]")) {
+    if (control.dataset.feedbackPage === page) control.setAttribute("aria-current", "page");
+    else control.removeAttribute("aria-current");
+  }
+  alignInkNav(feedbackDialog().querySelector(".ink-panel-nav"));
+  animate(page === "history" ? $("#feedback-records") : $("#feedback-write"), "ink-page-in");
+}
+
+function openFeedbackRecord(row) {
+  $("#feedback-sheet-title").textContent = "反馈详情";
+  $("#feedback-detail-title").textContent = row.title;
+  $("#feedback-detail-status").textContent = feedbackStatus(row.status) + " · " + new Date(row.created_at).toLocaleDateString("zh-CN");
+  $("#feedback-detail-body").textContent = row.body;
+  $("#feedback-detail").hidden = false;
+  $("#feedback-confirm").hidden = true;
+  $("#feedback-send-actions").hidden = true;
+  showInkSheet(feedbackDialog(), "feedback-sheet-title");
+}
+
 async function loadFeedback() {
   const target = $("#feedback-history");
+  const historyNotice = $("#feedback-history-note");
+  const revision = ++feedbackListVersion;
   target.replaceChildren();
   const owner = user?.id;
   if (!owner) return;
+  historyNotice.textContent = "正在读取反馈…";
   const { data, error } = await client.from("xp_feedback")
-    .select("id,title,status,created_at").eq("user_id", owner).eq("platform", "xp-director")
+    .select("id,title,body,status,created_at").eq("user_id", owner).eq("platform", "xp-director")
     .order("created_at", { ascending: false }).limit(10);
-  if (user?.id !== owner) return;
+  if (user?.id !== owner || revision !== feedbackListVersion) return;
   if (error || !data?.length) {
-    target.textContent = error ? "暂时无法读取反馈记录。" : "还没有反馈。";
+    historyNotice.textContent = error ? "暂时无法读取反馈记录。" : "还没有反馈。";
     return;
   }
+  historyNotice.textContent = "";
   for (const row of data) {
     const item = document.createElement("li");
-    const status = { open: "待处理", investigating: "跟进中", resolved: "已解决" }[row.status] || row.status;
-    item.textContent = row.title + " · " + status;
+    const control = document.createElement("button");
+    control.type = "button";
+    control.className = "button feedback-record";
+    const title = document.createElement("span");
+    title.textContent = row.title;
+    const status = document.createElement("span");
+    status.textContent = feedbackStatus(row.status);
+    control.append(title, status);
+    control.addEventListener("click", () => openFeedbackRecord(row));
+    item.append(control);
     target.append(item);
   }
 }
@@ -111,11 +165,12 @@ function openFeedback() {
     afterLogin = true;
     changeMode("login");
     authDialog().showModal();
+    alignInkNav($("#auth-options"));
     notice("#auth-notice", "登录后可提交反馈和查看处理状态。");
     return;
   }
   feedbackDialog().showModal();
-  loadFeedback().catch(() => { $("#feedback-history").textContent = "暂时无法读取反馈记录。"; });
+  feedbackPage("write");
 }
 
 async function finishLogin(session) {
@@ -130,12 +185,14 @@ async function finishLogin(session) {
 
 async function runAuth(event) {
   event.preventDefault();
+  if (authBusy) return;
   if (!client) return notice("#auth-notice", "账号服务暂不可用。", "error");
   const email = $("#auth-email").value.trim();
   const password = $("#auth-password").value;
   const operation = mode;
   const controls = [...$("#auth-form").querySelectorAll("button"), ...$("#auth-options").querySelectorAll("button")];
   authBusy = true;
+  authForm().setAttribute("aria-busy", "true");
   controls.forEach((element) => { element.disabled = true; });
   notice("#auth-notice", "正在处理…");
   try {
@@ -165,6 +222,11 @@ async function runAuth(event) {
     if (operation === "reset") {
       notice("#auth-notice", "如该邮箱已注册，请查收密码重置邮件。", "success");
     } else if (operation === "signup" && !result.data.session) {
+      const authResult = $("#auth-signup-result");
+      authResult.hidden = false;
+      $("#auth-sheet-title").textContent = "验证邮箱";
+      $("#auth-signup-email").textContent = email;
+      showInkSheet(authDialog(), "auth-sheet-title");
       notice("#auth-notice", "请查收验证邮件。完成验证后即可登录。", "success");
     } else if (operation === "verify" && emailToken?.type === "recovery") {
       emailToken = null;
@@ -180,13 +242,14 @@ async function runAuth(event) {
     notice("#auth-notice", authError(error), "error");
   } finally {
     authBusy = false;
+    authForm().removeAttribute("aria-busy");
     controls.forEach((element) => { element.disabled = false; });
   }
 }
 
-async function submitFeedback(event) {
+function previewFeedback(event) {
   event.preventDefault();
-  if (!user) return;
+  if (!user || feedbackBusy) return;
   const body = redact($("#feedback-body").value);
   const title = redact($("#feedback-subject").value);
   if ([...body].length < 10 || [...title].length < 3) {
@@ -198,37 +261,48 @@ async function submitFeedback(event) {
     p_consent_version: "2026-11-03"
   };
   const signature = JSON.stringify(draft);
-  if (feedbackAttempt?.signature !== signature) {
-    feedbackAttempt = { signature, id: crypto.randomUUID() };
-    $("#feedback-preview").textContent = title + "\n\n" + body;
-    $("#feedback-confirm").hidden = false;
-    $("#feedback-submit").textContent = "确认发送";
-    notice("#feedback-notice", "请检查下面的实际发送内容。");
-    return;
-  }
+  if (feedbackAttempt?.signature !== signature) feedbackAttempt = { signature, draft, id: crypto.randomUUID() };
+  $("#feedback-sheet-title").textContent = "发送内容预览";
+  $("#feedback-preview").textContent = title + "\n\n" + body;
+  $("#feedback-detail").hidden = true;
+  $("#feedback-confirm").hidden = false;
+  $("#feedback-send-actions").hidden = false;
+  notice("#feedback-notice");
+  notice("#feedback-send-notice");
+  showInkSheet(feedbackDialog(), "feedback-sheet-title");
+}
+
+async function sendFeedback() {
+  if (!user || !feedbackAttempt || feedbackBusy || $("#feedback-confirm").hidden) return;
+  const { draft, id } = feedbackAttempt;
   const button = $("#feedback-submit");
+  feedbackBusy = true;
   button.disabled = true;
-  notice("#feedback-notice", "正在发送…");
+  notice("#feedback-send-notice", "正在发送…");
   try {
     const owner = user.id;
-    const { data, error } = await client.rpc("xp_submit_feedback", { ...draft, p_id: feedbackAttempt.id });
+    const { data, error } = await client.rpc("xp_submit_feedback", { ...draft, p_id: id });
     if (user?.id !== owner) return;
     if (error || !data?.id) throw error || new Error("Missing feedback receipt");
     feedbackForm().reset();
     clearPreview();
-    notice("#feedback-notice", "已提交，编号 " + data.id.slice(0, 8) + "。", "success");
-    await loadFeedback();
+    hideInkSheet(feedbackDialog(), true);
+    feedbackPage("history");
+    await loadFeedback().catch(() => {});
+    if (user?.id === owner) notice("#feedback-history-note", "已提交，编号 " + data.id.slice(0, 8) + "。", "success");
   } catch (error) {
-    notice("#feedback-notice", error?.message?.startsWith("反馈提交比较频繁")
+    notice("#feedback-send-notice", error?.message?.startsWith("反馈提交比较频繁")
       ? "反馈提交比较频繁，请稍后再试。" : "暂未收到确认，可用同一编号重试。", "error");
-  } finally { button.disabled = false; }
+  } finally {
+    feedbackBusy = false;
+    button.disabled = false;
+  }
 }
 
 function clearPreview() {
   feedbackAttempt = null;
   $("#feedback-confirm").hidden = true;
   $("#feedback-preview").textContent = "";
-  $("#feedback-submit").textContent = "预览反馈";
 }
 
 export async function initAccount() {
@@ -237,7 +311,8 @@ export async function initAccount() {
     if (!user) {
       afterLogin = false;
       changeMode("login");
-      authDialog().showModal();
+    if (!authDialog().open) authDialog().showModal();
+      alignInkNav($("#auth-options"));
       if (!client) notice("#auth-notice", "账号服务暂不可用。", "error");
       return;
     }
@@ -253,8 +328,14 @@ export async function initAccount() {
     }
   };
   document.querySelectorAll("[data-feedback]").forEach((button) => { button.onclick = openFeedback; });
-  document.querySelectorAll("[data-auth-mode]").forEach((button) => { button.onclick = () => changeMode(button.dataset.authMode); });
-  $("#auth-form").onsubmit = runAuth;
+  document.querySelectorAll("[data-auth-mode]").forEach((button) => { button.onclick = () => {
+    if (!authBusy) changeMode(button.dataset.authMode);
+  }; });
+  authDialog().addEventListener("ink-sheet-closed", () => {
+    $("#auth-signup-result").hidden = true;
+    if (mode === "reset" || mode === "newPassword") changeMode("login");
+  });
+  authForm().onsubmit = runAuth;
   $("#github-auth").onclick = async () => {
     if (!client || !config?.githubEnabled) return;
     try {
@@ -263,8 +344,14 @@ export async function initAccount() {
       if (error) throw error;
     } catch (error) { notice("#auth-notice", authError(error), "error"); }
   };
-  feedbackForm().onsubmit = submitFeedback;
+  feedbackForm().onsubmit = previewFeedback;
   feedbackForm().oninput = clearPreview;
+  $("#feedback-submit").onclick = sendFeedback;
+  document.querySelectorAll("[data-feedback-page]").forEach((button) => { button.onclick = () => {
+    const page = button.dataset.feedbackPage;
+    feedbackPage(page);
+    if (page === "history") loadFeedback().catch(() => { $("#feedback-history-note").textContent = "暂时无法读取反馈记录。"; });
+  }; });
   try {
     const response = await fetch(new URL("service-config.json", redirectUrl), { cache: "no-store" });
     if (!response.ok) throw new Error("Missing public configuration");
@@ -306,8 +393,8 @@ export async function initAccount() {
     } else if (user && sessionStorage.getItem("xp-director-after-login") === "feedback") {
       sessionStorage.removeItem("xp-director-after-login");
       if (!authDialog().open) openFeedback();
-    } else if (mode === "login") {
-      changeMode("login");
+    } else {
+      $("#github-auth").hidden = !config.githubEnabled || !["login", "signup"].includes(mode);
     }
   } catch {
     client = null;

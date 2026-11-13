@@ -64,7 +64,6 @@ button:not(:disabled), select:not(:disabled), input[type="file"], summary { curs
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); padding: 3px 6px; font-size: 16px; line-height: 1.14; }
 .brand:hover { text-decoration: none; }
 .brand strong { font-weight: 750; }
-.brand small { display: block; margin-top: 6px; color: var(--muted); font: 9px var(--mono); letter-spacing: .16em; }
 .brand-mark {
   width: 40px;
   height: 40px;
@@ -278,16 +277,7 @@ input[type="checkbox"] { width: 15px; height: 15px; flex: 0 0 15px; margin: 2px 
 .modal-top h2 { font-size: 19px; }
 .modal p.muted { margin: 10px 0; }
 .close { width: 33px; padding: 0; font-size: 22px; font-weight: 300; }
-#auth-options { margin-bottom: 9px; }
 #auth-form:not([data-mode="login"]) .only-login { display: none; }
-.feedback-history { border-top: 1px solid var(--line); margin-top: 13px; padding-top: 10px; }
-.feedback-history ul { padding-left: 18px; font-size: 12px; color: var(--muted); }
-.model-status { margin: 10px 0; }
-.model-status > div { display: grid; grid-template-columns: auto 1fr; gap: 8px; border-top: 1px solid var(--line); padding: 6px 0; }
-.model-status dt { color: var(--muted); }
-.model-status dd { text-align: right; overflow-wrap: anywhere; }
-#connection-settings { margin: 12px 0; }
-#connection-settings form { margin-top: 10px; }
 .toast { position: fixed; z-index: 30; bottom: 16px; right: 16px; max-width: min(390px,calc(100% - 32px)); background: var(--accent); color: #231b10; border-radius: 7px; font-size: 13px; padding: 10px 13px; box-shadow: 0 12px 38px #0005; }
 .toast:empty { display: none; }
 @media (max-width: 1130px) {

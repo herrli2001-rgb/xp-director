@@ -1,17 +1,21 @@
-import { initAccount } from "./auth.js";
+import { initAccount } from "./auth.js?v=40115cd331b5";
 import { assetUrl, formats, loadWorkspace, looks, newProject, newShot, outline, projectFiles, readBlob,
-  reviewItems, saveAsset, saveWorkspace, shotLabel, timecode, timeline, totalDuration } from "./projects.js";
-import { $, $$, api, button, downloadZip, el, importGenerated, initMedia, notice, operation, upload } from "./media.js";
+  reviewItems, saveAsset, saveWorkspace, shotLabel, timecode, timeline, totalDuration } from "./projects.js?v=40115cd331b5";
+import { $, $$, api, button, downloadZip, el, importGenerated, initMedia, notice, operation, upload } from "./media.js?v=40115cd331b5";
+import { animate, hideInkSheet, initInkWorkspace, showInkSheet } from "./assets/ink/motion.js?v=40115cd331b5";
+import { initModelPanel } from "./assets/ink/model-panel.js?v=40115cd331b5";
 
 const workspace = loadWorkspace();
 const runtime = { local: false };
-const viewNames = { overview: "影片项目", storyboard: "分镜板", assets: "素材库", review: "审片与交付",
-  trends: "趋势研究", watch: "竞品拆解", photos: "竖屏图文" };
+const viewNames = { overview: "影片项目", script: "剧本", storyboard: "分镜", assets: "媒体池", review: "审片与交付",
+  trends: "趋势分析", watch: "视频拆解", photos: "竖屏图文" };
+const filmViews = new Set(["overview", "script", "storyboard", "assets", "review"]);
 const project = () => workspace.projects.find((item) => item.id === workspace.active);
 let selected = project().shots[project().example ? 2 : 0]?.id;
 let previewRatio = project().ratio;
 let shotDraft, videoDraft, rename = false, stageVersion = 0, toastTimer;
 let textRoute = "harness";
+let currentView;
 try { textRoute = localStorage.getItem("xp-director-text-route") || textRoute; } catch { /* Optional preference. */ }
 
 function toast(message) {
@@ -28,12 +32,17 @@ function persist(record) {
 
 function go(view, scroll = true) {
   if (!Object.hasOwn(viewNames, view)) view = "overview";
+  const inFilm = filmViews.has(view);
   for (const tab of $$("[data-view]")) {
-    if (tab.dataset.view === view) tab.setAttribute("aria-current", "page");
+    const active = tab.hasAttribute("data-film-home") ? inFilm : tab.dataset.view === view;
+    if (active) tab.setAttribute("aria-current", "page");
     else tab.removeAttribute("aria-current");
   }
   for (const panel of $$("[data-panel]")) panel.hidden = panel.dataset.panel !== view;
+  $("#film-chrome").hidden = !inFilm;
   $("#view-label").textContent = viewNames[view];
+  if (currentView && currentView !== view) animate($('[data-panel="' + view + '"]'), "ink-view-in");
+  currentView = view;
   if (scroll) window.scrollTo({ top: 0 });
 }
 
@@ -51,7 +60,7 @@ function invalidate(record, from = 0) {
   }
 }
 
-function mediaNode(asset, controls = true) {
+function mediaNode(asset, controls = true, source = "") {
   const kind = asset.type.split("/")[0];
   const node = el(kind === "image" ? "img" : kind);
   if (kind === "image") {
@@ -61,7 +70,8 @@ function mediaNode(asset, controls = true) {
     node.preload = "metadata";
     if (kind === "video") node.playsInline = true;
   }
-  assetUrl(asset).then((source) => { if (source) node.src = source; }).catch(() => {});
+  if (source) node.src = source;
+  else assetUrl(asset).then((url) => { if (url) node.src = url; }).catch(() => {});
   return node;
 }
 
@@ -78,16 +88,18 @@ function renderStage() {
   if (frame) {
     assetUrl(frame).then((source) => {
       if (revision !== stageVersion || !source) return;
-      const node = mediaNode(frame);
+      const node = mediaNode(frame, true, source);
       node.addEventListener("error", () => {
         if (revision === stageVersion) canvas.replaceChildren(el("p", "素材无法预览，请重新导入。", "muted"));
       });
       canvas.replaceChildren(node);
+      animate(node, "ink-frame-in");
     }).catch(() => {
       if (revision === stageVersion) canvas.replaceChildren(el("p", "素材无法预览。", "muted"));
     });
   }
   $("#stage-caption").textContent = frame?.name || "镜头素材";
+  $("#stage-time").textContent = timecode(totalDuration(record.shots.slice(0, Math.max(index, 0))));
   $("#shot-code").textContent = shot ? shotLabel(index) : "";
   $("#shot-name").textContent = shot?.title || "选择一个镜头";
   $("#shot-action").textContent = shot?.action || "";
@@ -97,6 +109,7 @@ function renderStage() {
   $("#shot-model").textContent = runtime.models?.video?.available ? runtime.models.video.label : "待连接";
   $("#edit-current-shot").disabled = !shot;
   $("#open-video").disabled = !shot;
+  $("#workflow-video").disabled = !shot;
   const task = shot && record.ledger.findLast((entry) => entry.shot === shot.id);
   notice("#shot-status", task ? "最近任务 · " + statusName(task.state) : "");
 }
@@ -116,7 +129,15 @@ function renderTimeline() {
       renderStage();
     }, "timeline-shot");
     card.setAttribute("aria-pressed", String(shot.id === selected));
-    card.append(el("span", shot.label), el("strong", shot.title), el("small", timecode(shot.start) + "–" + timecode(shot.end)));
+    const frame = record.assets.find((item) => item.id === (shot.first || shot.last) && item.type.startsWith("image/"));
+    const thumbnail = frame ? mediaNode(frame, false) : el("span");
+    thumbnail.className = "shot-thumb";
+    thumbnail.setAttribute("aria-hidden", "true");
+    if (frame) {
+      thumbnail.alt = "";
+      thumbnail.loading = "lazy";
+    }
+    card.append(thumbnail, el("span", shot.label), el("strong", shot.title), el("small", timecode(shot.start) + "–" + timecode(shot.end)));
     track.append(card);
   });
 }
@@ -327,29 +348,8 @@ function openVideo() {
 }
 
 function updateModels() {
-  const available = runtime.models;
-  const select = $("#model-select");
-  const routes = available?.text || [{ id: "harness", label: "DeepSeek Harness", available: false },
-    { id: "compatible", label: "兼容文本 API", available: false }];
-  if (!routes.some((item) => item.id === textRoute && item.available)) {
-    textRoute = routes.find((item) => item.available)?.id || "harness";
-  }
-  select.replaceChildren(...routes.map((item) => {
-    const option = new Option(item.label + (item.available ? "" : " · 待连接"), item.id, false, item.id === textRoute);
-    option.disabled = !item.available;
-    return option;
-  }));
-  select.disabled = !routes.some((item) => item.available);
-  $("#generate-plan").disabled = !routes.some((item) => item.id === textRoute && item.available);
-  $("#models-local-note").textContent = runtime.local ? "本机运行器已连接。" : "模型、采集和视频处理由本机运行器执行。";
+  $("#generate-plan").disabled = !modelsPanel.refreshRoutes();
   $("#runtime-label").textContent = runtime.local ? "本机运行器在线" : "网页工作台";
-  $("#open-local").hidden = runtime.local;
-  $("#connection-settings").hidden = !runtime.local;
-  $("#model-status").replaceChildren(...[["生图", available?.image], ["视频", available?.video], ["视频分析", available?.vision]].map(([title, model]) => {
-    const row = el("div");
-    row.append(el("dt", title), el("dd", model?.available ? model.label : "待配置"));
-    return row;
-  }));
   renderStage();
   renderReview();
   media.updateAvailability();
@@ -358,36 +358,14 @@ function updateModels() {
 
 const media = initMedia({ project, persist, runtime, route: () => textRoute,
   canWrite: () => runtime.models?.text.some((item) => item.id === textRoute && item.available) });
+initInkWorkspace();
+const modelsPanel = initModelPanel({
+  runtime, route: () => textRoute, setRoute: (next) => { textRoute = next; }, onModelsChanged: updateModels
+});
 
 for (const control of $$("[data-view]")) control.onclick = () => go(control.dataset.view);
 for (const control of $$("[data-close]")) control.onclick = () => control.closest("dialog").close();
-for (const control of $$("[data-models]")) control.onclick = () => $("#models-dialog").showModal();
-$("#model-select").onchange = (event) => {
-  textRoute = event.target.value;
-  try { localStorage.setItem("xp-director-text-route", textRoute); } catch { /* Session selection still works. */ }
-  updateModels();
-};
-$("#connection-kind").onchange = (event) => {
-  const kind = event.target.value;
-  $("#connection-url-field").hidden = !["compatible", "image", "vision"].includes(kind);
-  $("#connection-url").value = "";
-  $("#connection-key").value = "";
-  $("#connection-model").value = kind === "harness" ? "deepseek-v4-flash" : "";
-  notice("#connection-notice");
-};
-$("#connection-form").onsubmit = (event) => {
-  event.preventDefault();
-  const kind = $("#connection-kind").value;
-  return operation($("#connection-save"), "#connection-notice", "正在应用…", async () => {
-    const models = await api("models", { kind, model: $("#connection-model").value, address: $("#connection-url").value,
-      key: $("#connection-key").value });
-    $("#connection-key").value = "";
-    runtime.models = models;
-    if (["harness", "compatible"].includes(kind)) textRoute = kind;
-    updateModels();
-    notice("#connection-notice", "已保存到当前运行器。第一次调用时验证服务响应。", "success");
-  });
-};
+$("#workflow-video").onclick = openVideo;
 $("#project-list").onchange = (event) => {
   workspace.active = event.target.value;
   selected = project().shots[0]?.id;
@@ -543,13 +521,32 @@ $("#video-query").onclick = () => operation($("#video-query"), "#video-status", 
   if (project() === record) renderProject();
   notice("#video-status", statusName(result.state) + (result.clip ? " · 原片已保存并关联。" : ""));
 });
-$("#export-project").onclick = async () => {
-  try {
-    const record = project();
-    await downloadZip(projectFiles(record), fileName(record.title) + "-制作记录.zip");
-    toast("已导出制作记录。");
-  } catch (error) { toast(error.message); }
+const deliveryDialog = $("#delivery-dialog");
+const exportFieldsForm = $("#export-fields-form");
+let deliveryRecord;
+let deliveryFields;
+$("#export-project").onclick = () => {
+  deliveryRecord = project();
+  $("#export-title").textContent = deliveryRecord.title;
+  $("#export-count").textContent = deliveryRecord.shots.length + " 个";
+  notice("#export-notice");
+  deliveryDialog.showModal();
 };
+$("#export-open-fields").onclick = () => {
+  for (const field of $$("[name=field]", exportFieldsForm)) field.checked = !deliveryFields || deliveryFields.includes(field.value);
+  showInkSheet(deliveryDialog, "export-fields-title");
+};
+exportFieldsForm.onsubmit = (event) => {
+  event.preventDefault();
+  deliveryFields = new FormData(exportFieldsForm).getAll("field");
+  hideInkSheet(deliveryDialog);
+  notice("#export-notice", "分镜 CSV 字段已更新。");
+};
+$("#export-download").onclick = () => operation($("#export-download"), "#export-notice", "正在整理制作记录…", async () => {
+  const record = deliveryRecord;
+  await downloadZip(projectFiles(record, deliveryFields), fileName(record.title) + "-制作记录.zip");
+  notice("#export-notice", "已导出制作记录。", "success");
+});
 $("#render-film").onclick = () => operation($("#render-film"), "#render-status", "正在拼接镜头并编码 MP4…", async () => {
   const record = project();
   const ratio = record.ratio;
@@ -570,5 +567,8 @@ $("#render-film").onclick = () => operation($("#render-film"), "#render-status",
 renderProject();
 if (project().film) showFilm(project().film);
 initAccount();
-api("status").then((status) => { Object.assign(runtime, status); }).catch(() => {}).finally(updateModels);
+updateModels();
+if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+  api("status").then((status) => { Object.assign(runtime, status); updateModels(); }).catch(() => {});
+}
 go("overview", false);

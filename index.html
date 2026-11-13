@@ -2,39 +2,47 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
+  <meta name="xp-build" content="40115cd331b5">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#0d0f12">
+  <meta name="theme-color" content="#171717">
   <meta name="description" content="XP Director 影视创作工作台。搜索选题、拆解参考片、制作分镜与竖屏图文。">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://lnlewhjrppwmwjfchwqi.supabase.co; img-src 'self' blob: data:; media-src 'self' blob:; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
   <link rel="icon" href="./assets/studio/brand-full.png">
-  <link rel="stylesheet" href="./styles.css">
-  <script defer src="./vendor/supabase.js"></script>
+  <link rel="stylesheet" href="./styles.css?v=40115cd331b5">
+  <link rel="stylesheet" href="./assets/ink/workspace.css?v=40115cd331b5">
+  <link rel="stylesheet" href="./assets/ink/panels.css?v=40115cd331b5">
+  <script defer src="./vendor/supabase.js?v=40115cd331b5"></script>
   <title>XP Director · 影视创作工作台</title>
 </head>
 <body>
   <a class="skip" href="#main">跳到工作台</a>
+  <template id="ink-landscape">
+    <div class="ink-landscape" aria-hidden="true">
+      <div class="ink-ridge"></div><div class="ink-mist"></div><div class="ink-pines"></div><div class="ink-paper"></div>
+    </div>
+  </template>
+  <div class="workspace-landscape" data-ink-scene aria-hidden="true"></div>
   <div class="shell">
     <aside class="rail" aria-label="工作台导航">
-      <a class="brand" href="https://herr-li.com/" title="返回 herr-li.com">
-        <span class="brand-mark" aria-hidden="true">XP</span><span>XP <strong>Director</strong><small>XP STUDIO</small></span>
+      <a class="brand" href="https://herr-li.com/" aria-label="XP Director，返回主站" title="返回 herr-li.com">
+        <span class="brand-mark" aria-hidden="true">XP</span><strong class="brand-name">Director</strong>
       </a>
       <nav class="navigation" aria-label="功能">
-        <button type="button" data-view="overview" aria-current="page"><i class="nav-icon aperture" aria-hidden="true"></i> 影片项目</button>
-        <button type="button" data-view="storyboard"><i class="nav-icon board" aria-hidden="true"></i> 分镜板</button>
-        <button type="button" data-view="assets"><i class="nav-icon folder" aria-hidden="true"></i> 素材库</button>
-        <button type="button" data-view="review"><i class="nav-icon check" aria-hidden="true"></i> 审片与交付</button>
-        <button type="button" data-view="trends"><i class="nav-icon graph" aria-hidden="true"></i> 趋势研究</button>
-        <button type="button" data-view="watch"><i class="nav-icon play" aria-hidden="true"></i> 竞品拆解</button>
+        <span class="nav-group-title">创作</span>
+        <button type="button" data-view="overview" data-film-home aria-current="page"><i class="nav-icon aperture" aria-hidden="true"></i> 影片创作</button>
         <button type="button" data-view="photos"><i class="nav-icon photo" aria-hidden="true"></i> 竖屏图文</button>
+        <span class="nav-group-title">研究</span>
+        <button type="button" data-view="trends"><i class="nav-icon graph" aria-hidden="true"></i> 趋势分析</button>
+        <button type="button" data-view="watch"><i class="nav-icon play" aria-hidden="true"></i> 视频拆解</button>
       </nav>
       <div class="project-switch">
         <label for="project-list">本机项目</label>
         <select id="project-list"></select>
       </div>
       <div class="rail-footer">
-        <button class="quiet-button" type="button" data-models>模型设置</button>
-        <button class="quiet-button" type="button" data-feedback>意见反馈</button>
+        <button class="quiet-button" type="button" data-models><i class="nav-icon sliders" aria-hidden="true"></i>模型设置</button>
+        <button class="quiet-button" type="button" data-feedback><i class="nav-icon message" aria-hidden="true"></i>意见反馈</button>
       </div>
     </aside>
 
@@ -43,19 +51,29 @@
         <span id="view-label" class="breadcrumb">影片项目</span>
         <div class="topbar-actions">
           <span class="runtime-chip" id="runtime-label">网页工作台</span>
-          <button class="button" type="button" data-feedback>反馈</button>
+          <button class="button motion-toggle" type="button" id="motion-toggle" aria-pressed="true"><i class="nav-icon motion-icon" aria-hidden="true"></i>动效</button>
+          <button class="button top-feedback" type="button" data-feedback>反馈</button>
           <button class="button" type="button" id="new-project">＋ 新建</button>
-          <button class="button primary" type="button" id="top-account">登录 / 注册</button>
+          <button class="button" type="button" id="top-account"><i class="nav-icon person" aria-hidden="true"></i><span id="account-label">登录 / 注册</span></button>
         </div>
       </header>
 
       <div class="content">
-        <section data-panel="overview">
-          <div class="page-heading project-heading">
+        <div id="film-chrome">
+          <div class="page-heading project-heading ink-heading" data-ink-scene>
             <div><div class="eyebrow" id="project-kind">示例项目</div><h1 id="project-title">雨夜之后</h1></div>
             <div class="heading-actions"><span id="project-spec" class="muted"></span><button type="button" class="button" id="rename-project">重命名</button></div>
           </div>
-
+          <nav class="film-nav" aria-label="影片制作阶段">
+            <button type="button" data-view="overview" aria-current="page">项目</button>
+            <button type="button" data-view="assets">媒体池</button>
+            <button type="button" data-view="script">剧本</button>
+            <button type="button" data-view="storyboard">分镜</button>
+            <button type="button" id="workflow-video">镜头生成</button>
+            <button type="button" data-view="review">审片与交付</button>
+          </nav>
+        </div>
+        <section data-panel="overview">
           <div class="director-grid">
             <section class="panel brief-panel" aria-labelledby="brief-title">
               <h2 id="brief-title">创意简报</h2>
@@ -74,7 +92,7 @@
 
             <section class="panel stage-panel" aria-labelledby="stage-title">
               <div class="panel-heading">
-                <h2 id="stage-title">镜头预览</h2>
+                <h2 id="stage-title">分镜预览</h2>
                 <div class="segmented" id="preview-ratios" aria-label="预览画幅">
                   <button type="button" data-ratio="9:16" aria-pressed="true">9:16</button>
                   <button type="button" data-ratio="16:9" aria-pressed="false">16:9</button>
@@ -82,11 +100,11 @@
                 </div>
               </div>
               <div class="stage"><div class="stage-viewport" id="stage-viewport" data-ratio="9:16"></div></div>
-              <div class="stage-caption"><span id="stage-caption">参考帧</span><button class="quiet-button" type="button" id="open-storyboard">打开分镜板 ↗</button></div>
+              <div class="stage-caption"><time class="stage-time" id="stage-time">00:00</time><span id="stage-caption">参考帧</span><button class="quiet-button" type="button" id="open-storyboard">打开分镜 ↗</button></div>
             </section>
 
             <section class="panel inspector" aria-labelledby="shot-title">
-              <h2 id="shot-title">当前镜头</h2>
+              <h2 id="shot-title">检查器</h2>
               <div class="shot-info"><span class="eyebrow" id="shot-code"></span><h3 id="shot-name"></h3><p id="shot-action"></p></div>
               <dl class="shot-meta">
                 <div><dt>机位与运镜</dt><dd id="shot-camera"></dd></div>
@@ -103,28 +121,32 @@
           </div>
 
           <section class="panel timeline-panel" aria-labelledby="timeline-heading">
-            <div class="panel-heading"><div><h2 id="timeline-heading">镜头顺序</h2><p id="timeline-summary" class="muted"></p></div><button class="button" id="add-shot" type="button">＋ 添加镜头</button></div>
+            <div class="panel-heading"><div><h2 id="timeline-heading">分镜时间线</h2><p id="timeline-summary" class="muted"></p></div><button class="button" id="add-shot" type="button">＋ 添加镜头</button></div>
             <div class="timeline-track" id="timeline-track"></div>
           </section>
         </section>
 
-        <section data-panel="storyboard" hidden>
-          <div class="page-heading"><h1>分镜板</h1><button class="button primary" id="storyboard-add" type="button">＋ 添加镜头</button></div>
+        <section data-panel="script" hidden>
+          <div class="page-heading section-heading"><h1>剧本</h1></div>
           <div class="fields-two story-fields">
             <label class="panel">剧本<textarea id="story-text" rows="4" maxlength="8000" placeholder="记录开场、转折和结尾。"></textarea></label>
             <label class="panel">画风与连续性<textarea id="design-text" rows="4" maxlength="6000" placeholder="记录人物特征、道具、环境和光线。"></textarea></label>
           </div>
+        </section>
+
+        <section data-panel="storyboard" hidden>
+          <div class="page-heading section-heading"><h1>分镜</h1><button class="button primary" id="storyboard-add" type="button">＋ 添加镜头</button></div>
           <div id="storyboard-grid" class="card-grid"></div>
         </section>
 
         <section data-panel="assets" hidden>
-          <div class="page-heading"><div><h1>素材库</h1><p class="muted">可将图片和片段关联到项目中的镜头。</p></div><label class="button file-button">＋ 导入素材<input type="file" id="asset-input" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/wav" multiple></label></div>
+          <div class="page-heading section-heading"><div><h1>媒体池</h1><p class="muted">可将图片和片段关联到项目中的镜头。</p></div><label class="button file-button">＋ 导入素材<input type="file" id="asset-input" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/wav" multiple></label></div>
           <p class="notice" id="asset-status" role="status"></p>
           <div id="asset-grid" class="card-grid"></div>
         </section>
 
         <section data-panel="review" hidden>
-          <div class="page-heading"><h1>审片与交付</h1><button class="button primary" id="export-project" type="button">导出制作记录 ZIP</button></div>
+          <div class="page-heading section-heading"><h1>审片与交付</h1><button class="button primary" id="export-project" type="button">导出制作记录 ZIP</button></div>
           <div class="fields-two">
             <section class="panel tool-panel"><h2>复核记录</h2><div id="review-checklist"></div><p class="muted">更改故事、镜头或关联素材后，需重新核对相关项。</p></section>
             <section class="panel tool-panel">
@@ -136,7 +158,7 @@
         </section>
 
         <section data-panel="trends" hidden>
-          <div class="page-heading"><div><h1>趋势研究</h1><p class="muted">按平台查看同一关键词的样本。再次采集后可查看重叠作品的播放增量。</p></div></div>
+          <div class="page-heading ink-heading" data-ink-scene><div><h1>趋势分析</h1><p class="muted">按平台查看同一关键词的样本。再次采集后可查看重叠作品的播放增量。</p></div></div>
           <section class="panel tool-panel">
             <form id="trend-form" class="inline-form">
               <label>关键词<input id="trend-keyword" maxlength="120" required placeholder="如：悬疑竖屏短片"></label>
@@ -149,7 +171,7 @@
         </section>
 
         <section data-panel="watch" hidden>
-          <div class="page-heading"><div><h1>竞品拆解</h1><p class="muted">用 Bubble Watch 提取有时间戳的画面和字幕。</p></div></div>
+          <div class="page-heading ink-heading" data-ink-scene><div><h1>视频拆解</h1><p class="muted">用 Bubble Watch 提取有时间戳的画面和字幕。</p></div></div>
           <section class="panel tool-panel">
             <form id="watch-form">
               <div class="fields-two"><label>视频链接<input id="watch-url" type="url" placeholder="粘贴公开视频链接"></label><label>本地视频<input id="watch-file" type="file" accept="video/mp4,video/quicktime,video/webm"></label></div>
@@ -162,7 +184,7 @@
         </section>
 
         <section data-panel="photos" hidden>
-          <div class="page-heading"><div><h1>竖屏图文</h1><p class="muted">9:16 手机纪实风，字幕叠在画面中上方。</p></div><button class="button primary" id="export-photos" type="button">导出图文 ZIP</button></div>
+          <div class="page-heading ink-heading" data-ink-scene><div><h1>竖屏图文</h1><p class="muted">9:16 手机纪实风，字幕叠在画面中上方。</p></div><button class="button primary" id="export-photos" type="button">导出图文 ZIP</button></div>
           <section class="panel tool-panel">
             <form id="photos-form" class="inline-form">
               <label>题材<input id="photo-brief" maxlength="500" placeholder="用一句话描述这组图文"></label>
@@ -213,30 +235,60 @@
     </form>
   </dialog>
 
-  <dialog class="modal" id="models-dialog" aria-labelledby="models-title">
-    <div class="modal-top"><h2 id="models-title">模型设置</h2><button type="button" class="close" data-close aria-label="关闭">×</button></div>
-    <p id="models-local-note" class="muted"></p>
-    <dl class="model-status" id="model-status"></dl>
-    <label>文本默认线路<select id="model-select" aria-label="文本默认线路"></select></label>
-    <details id="connection-settings" hidden>
-      <summary>配置模型连接</summary>
-      <form id="connection-form">
-        <label>模型用途<select id="connection-kind"><option value="harness">文本 · DeepSeek Harness</option><option value="compatible">文本 · 兼容 API</option><option value="image">生图 · 兼容 API</option><option value="vision">拆解 · 视觉 API</option><option value="video">视频 · 方舟 Seedance</option></select></label>
-        <label id="connection-url-field" hidden>服务地址<input id="connection-url" type="url" placeholder="https://服务商地址/v1" maxlength="700"></label>
-        <label>模型 ID<input id="connection-model" required maxlength="180" value="deepseek-v4-flash"></label>
-        <label>API 密钥<input id="connection-key" type="password" maxlength="4000" autocomplete="off"></label>
-        <button class="button primary" id="connection-save" type="submit">应用到本次运行</button>
-        <p class="notice" id="connection-notice" role="status"></p>
-      </form>
-    </details>
-    <p class="muted">此处配置仅在本次运行有效。长期配置可写在本机的 .env 文件中。</p>
-    <a class="button" id="open-local" href="http://127.0.0.1:4178/" target="_blank" rel="noopener noreferrer">打开本机工作台 ↗</a>
+  <dialog class="modal ink-layered modal-models" id="models-dialog" aria-labelledby="models-title">
+    <div class="ink-dialog-base" data-ink-scene>
+      <div class="modal-top"><h2 id="models-title">模型设置</h2><button type="button" class="close" data-close aria-label="关闭">×</button></div>
+      <div class="ink-modal-layout">
+        <nav class="ink-panel-nav" aria-label="模型类型">
+          <span class="ink-nav-marker" aria-hidden="true"></span>
+          <button type="button" data-model-category="text" aria-current="page"><i class="nav-icon board" aria-hidden="true"></i>文本与分镜<span aria-hidden="true">›</span></button>
+          <button type="button" data-model-category="image"><i class="nav-icon photo" aria-hidden="true"></i>图像生成<span aria-hidden="true">›</span></button>
+          <button type="button" data-model-category="video"><i class="nav-icon play" aria-hidden="true"></i>视频生成<span aria-hidden="true">›</span></button>
+          <button type="button" data-model-category="vision"><i class="nav-icon aperture" aria-hidden="true"></i>视频拆解<span aria-hidden="true">›</span></button>
+        </nav>
+        <section class="ink-page" id="model-panel" aria-labelledby="model-panel-title">
+          <header class="ink-page-title"><h3 id="model-panel-title">文本与分镜</h3><p id="model-panel-description"></p></header>
+          <div class="model-grid" id="model-cards"></div>
+          <div class="model-controls">
+            <label id="model-route-field">文本默认线路<select id="model-select"></select></label>
+            <p id="models-local-note" class="muted"></p>
+            <a class="button" id="open-local" href="http://127.0.0.1:4178/" target="_blank" rel="noopener noreferrer">打开本机工作台 ↗</a>
+          </div>
+        </section>
+      </div>
+    </div>
+    <div class="ink-sheet-layer" hidden>
+      <div class="ink-sheet-shade" data-sheet-dismiss aria-hidden="true"></div>
+      <section class="ink-sheet" aria-labelledby="connection-title" data-ink-scene>
+        <header class="ink-sheet-heading">
+          <button class="button ink-back" type="button" data-sheet-dismiss><span aria-hidden="true">‹</span> 返回模型列表</button>
+          <h3 id="connection-title" tabindex="-1">连接配置</h3>
+        </header>
+        <div class="ink-sheet-content">
+          <form id="connection-form">
+            <label>接入方式<input id="connection-kind" readonly></label>
+            <label id="connection-url-field" hidden>服务地址<input id="connection-url" type="url" placeholder="https://api.example.com/v1" maxlength="700"></label>
+            <label>模型 ID<input id="connection-model" class="mono" required maxlength="180"></label>
+            <label>API 密钥<input id="connection-key" type="password" maxlength="4000" autocomplete="off"></label>
+            <p id="connection-scope" class="muted"></p>
+          </form>
+        </div>
+        <footer class="ink-sheet-actions">
+          <p class="notice" id="connection-notice" role="status"></p>
+          <a class="button" id="connection-local" href="http://127.0.0.1:4178/" target="_blank" rel="noopener noreferrer">打开本机工作台 ↗</a>
+          <button class="button primary" id="connection-save" type="submit" form="connection-form">应用到本次运行</button>
+        </footer>
+      </section>
+    </div>
   </dialog>
 
-  <dialog class="modal" id="auth-dialog" aria-labelledby="auth-title">
+  <dialog class="modal ink-layered modal-account" id="auth-dialog" aria-labelledby="auth-title">
+    <div class="ink-dialog-base" data-ink-scene>
     <div class="modal-top"><h2 id="auth-title">登录</h2><button type="button" class="close" data-close aria-label="关闭">×</button></div>
-    <div class="segmented" id="auth-options" aria-label="账号操作"><button type="button" data-auth-mode="login">登录</button><button type="button" data-auth-mode="signup">注册</button></div>
-    <form id="auth-form">
+    <div class="ink-modal-layout">
+    <nav class="ink-panel-nav" id="auth-options" aria-label="账号操作"><span class="ink-nav-marker" aria-hidden="true"></span><button type="button" data-auth-mode="login" aria-pressed="true"><i class="nav-icon person" aria-hidden="true"></i>登录<span aria-hidden="true">›</span></button><button type="button" data-auth-mode="signup"><i class="nav-icon person" aria-hidden="true"></i>注册<span aria-hidden="true">›</span></button></nav>
+    <div class="ink-page" id="auth-page">
+    <form class="ink-form-surface" id="auth-form">
       <label id="auth-name-field" hidden>显示名称<input id="auth-name" maxlength="60" autocomplete="nickname"></label>
       <label id="auth-email-field">邮箱<input id="auth-email" type="email" maxlength="254" autocomplete="email" required></label>
       <label id="auth-password-field">密码<input id="auth-password" type="password" maxlength="128" autocomplete="current-password" required></label>
@@ -244,22 +296,83 @@
       <button class="button primary" type="submit" id="auth-submit">登录</button>
       <button class="button" type="button" id="github-auth" hidden>使用 GitHub 继续</button>
       <button class="quiet-button only-login" type="button" data-auth-mode="reset">忘记密码</button>
-      <button class="quiet-button" type="button" id="auth-back" data-auth-mode="login" hidden>返回登录</button>
     </form>
-    <p class="muted">可使用已有 XP 账号。项目和媒体保存在当前浏览器。</p>
+    <p class="ink-note">可使用已有 XP 账号。项目和媒体保存在当前浏览器。</p>
+    </div>
+    </div>
+    </div>
+    <div class="ink-sheet-layer" hidden>
+      <div class="ink-sheet-shade" data-sheet-dismiss aria-hidden="true"></div>
+      <section class="ink-sheet" aria-labelledby="auth-sheet-title" data-ink-scene>
+        <header class="ink-sheet-heading"><button class="button ink-back" type="button" data-sheet-dismiss><span aria-hidden="true">‹</span> 返回账户</button><h3 id="auth-sheet-title" tabindex="-1">找回密码</h3></header>
+        <div class="ink-sheet-content" id="auth-sheet-content">
+          <div id="auth-signup-result" class="feedback-detail" hidden><h4 id="auth-signup-email"></h4><p>请查收验证邮件，打开邮件中的链接完成注册。</p></div>
+        </div>
+      </section>
+    </div>
   </dialog>
 
-  <dialog class="modal" id="feedback-dialog" aria-labelledby="feedback-title">
+  <dialog class="modal ink-layered modal-feedback" id="feedback-dialog" aria-labelledby="feedback-title">
+    <div class="ink-dialog-base" data-ink-scene>
     <div class="modal-top"><h2 id="feedback-title">意见反馈</h2><button type="button" class="close" data-close aria-label="关闭">×</button></div>
-    <form id="feedback-form">
+    <div class="ink-modal-layout">
+    <nav class="ink-panel-nav" aria-label="反馈菜单">
+      <span class="ink-nav-marker" aria-hidden="true"></span>
+      <button type="button" data-feedback-page="write" aria-current="page"><i class="nav-icon message" aria-hidden="true"></i>填写反馈<span aria-hidden="true">›</span></button>
+      <button type="button" data-feedback-page="history"><i class="nav-icon board" aria-hidden="true"></i>我的反馈<span aria-hidden="true">›</span></button>
+    </nav>
+    <section class="ink-page" id="feedback-write" aria-label="填写反馈">
+    <form class="ink-form-surface" id="feedback-form">
       <label>问题类型<select id="feedback-category"><option value="bug">使用问题 / 报错</option><option value="suggestion">功能建议</option><option value="account">账号问题</option><option value="other">其他</option></select></label>
       <label>标题<input id="feedback-subject" required minlength="3" maxlength="120"></label>
       <label>描述<textarea id="feedback-body" rows="4" required minlength="10" maxlength="10000"></textarea></label>
       <label class="checkbox"><input type="checkbox" required>同意将所填内容、产品和版本提交给 XP 反馈管理员。</label>
-      <div id="feedback-confirm" hidden><strong>发送内容预览</strong><pre id="feedback-preview"></pre></div>
-      <p class="notice" id="feedback-notice" role="status"></p><button class="button primary" type="submit" id="feedback-submit">预览反馈</button>
+      <p class="notice" id="feedback-notice" role="status"></p><button class="button primary" type="submit">预览反馈</button>
     </form>
-    <details class="feedback-history"><summary>我的反馈</summary><ul id="feedback-history"></ul></details>
+    </section>
+    <section class="ink-page" id="feedback-records" aria-label="我的反馈" hidden><p class="ink-note" id="feedback-history-note" role="status"></p><ul id="feedback-history"></ul></section>
+    </div>
+    </div>
+    <div class="ink-sheet-layer" hidden>
+      <div class="ink-sheet-shade" data-sheet-dismiss aria-hidden="true"></div>
+      <section class="ink-sheet" aria-labelledby="feedback-sheet-title" data-ink-scene>
+        <header class="ink-sheet-heading"><button class="button ink-back" type="button" data-sheet-dismiss><span aria-hidden="true">‹</span> 返回反馈</button><h3 id="feedback-sheet-title" tabindex="-1">发送内容预览</h3></header>
+        <div class="ink-sheet-content">
+          <div id="feedback-confirm" hidden><pre id="feedback-preview"></pre></div>
+          <article class="feedback-detail" id="feedback-detail" hidden><h4 id="feedback-detail-title"></h4><p class="muted" id="feedback-detail-status"></p><p id="feedback-detail-body"></p></article>
+        </div>
+        <footer class="ink-sheet-actions" id="feedback-send-actions"><p class="notice" id="feedback-send-notice" role="status"></p><button class="button primary" id="feedback-submit" type="button">确认发送</button></footer>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog class="modal ink-layered modal-delivery" id="delivery-dialog" aria-labelledby="delivery-title">
+    <div class="ink-dialog-base" data-ink-scene>
+      <div class="modal-top"><h2 id="delivery-title">导出制作记录</h2><button type="button" class="close" data-close aria-label="关闭">×</button></div>
+      <div class="ink-page">
+        <div class="ink-form-surface">
+          <dl class="export-summary"><div><dt>项目</dt><dd id="export-title"></dd></div><div><dt>镜头</dt><dd id="export-count" class="mono"></dd></div><div><dt>格式</dt><dd class="mono">ZIP</dd></div></dl>
+          <p class="muted">包含剧本、分镜 CSV、提示词、素材清单和复核记录。</p>
+          <div class="dialog-actions"><button class="button" type="button" id="export-open-fields">分镜字段 ›</button><button class="button primary" type="button" id="export-download">下载 ZIP</button></div>
+          <p class="notice" id="export-notice" role="status"></p>
+        </div>
+      </div>
+    </div>
+    <div class="ink-sheet-layer" hidden>
+      <div class="ink-sheet-shade" data-sheet-dismiss aria-hidden="true"></div>
+      <section class="ink-sheet" aria-labelledby="export-fields-title" data-ink-scene>
+        <header class="ink-sheet-heading"><button class="button ink-back" type="button" data-sheet-dismiss><span aria-hidden="true">‹</span> 返回导出</button><h3 id="export-fields-title" tabindex="-1">分镜字段</h3></header>
+        <div class="ink-sheet-content"><form id="export-fields-form">
+          <p class="muted">镜头编号、起止时间与名称始终导出。</p>
+          <label class="checkbox"><input type="checkbox" name="field" value="motion" checked>可见动作</label>
+          <label class="checkbox"><input type="checkbox" name="field" value="camera" checked>景别、机位与运镜</label>
+          <label class="checkbox"><input type="checkbox" name="field" value="frames" checked>首尾帧</label>
+          <label class="checkbox"><input type="checkbox" name="field" value="prompt" checked>提示词路径</label>
+          <label class="checkbox"><input type="checkbox" name="field" value="clip" checked>视频片段</label>
+        </form></div>
+        <footer class="ink-sheet-actions"><button class="button primary" type="submit" form="export-fields-form">应用字段</button></footer>
+      </section>
+    </div>
   </dialog>
 
   <dialog class="modal" id="replace-dialog" aria-labelledby="replace-title">
@@ -269,6 +382,6 @@
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="./app.js"></script>
+  <script type="module" src="./app.js?v=40115cd331b5"></script>
 </body>
 </html>

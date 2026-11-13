@@ -1,5 +1,5 @@
-import { strToU8, zip } from "./vendor/fflate.js";
-import { assetUrl, saveAsset } from "./projects.js";
+import { strToU8, zip } from "./vendor/fflate.js?v=40115cd331b5";
+import { assetUrl, saveAsset } from "./projects.js?v=40115cd331b5";
 
 export const $ = (selector, root = document) => root.querySelector(selector);
 export const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];

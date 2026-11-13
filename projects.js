@@ -140,14 +140,23 @@ function csvCell(value) {
   return '"' + safe.replaceAll('"', '""') + '"';
 }
 
-export function projectFiles(project) {
+export function projectFiles(project, fields = ["motion", "camera", "frames", "prompt", "clip"]) {
   const shots = timeline(project.shots);
   const names = new Map(project.assets.map((asset) => [asset.id, asset.name]));
-  const header = "shot_id,timeline_start,timeline_end,purpose,visible_motion,camera,first_frame,last_frame,prompt_file,clip_file";
-  const rows = shots.map((shot) => [
-    shot.label, shot.start, shot.end, shot.title, shot.action, shot.camera,
-    names.get(shot.first), names.get(shot.last), shot.prompt ? "prompts/" + shot.label + ".txt" : "", names.get(shot.clip)
-  ].map(csvCell).join(","));
+  const columns = [
+    ["shot_id", (shot) => shot.label],
+    ["timeline_start", (shot) => shot.start],
+    ["timeline_end", (shot) => shot.end],
+    ["purpose", (shot) => shot.title],
+    ["visible_motion", (shot) => shot.action, "motion"],
+    ["camera", (shot) => shot.camera, "camera"],
+    ["first_frame", (shot) => names.get(shot.first), "frames"],
+    ["last_frame", (shot) => names.get(shot.last), "frames"],
+    ["prompt_file", (shot) => shot.prompt ? "prompts/" + shot.label + ".txt" : "", "prompt"],
+    ["clip_file", (shot) => names.get(shot.clip), "clip"],
+  ].filter(([, , field]) => !field || fields.includes(field));
+  const header = columns.map(([name]) => name).join(",");
+  const rows = shots.map((shot) => columns.map(([, read]) => csvCell(read(shot))).join(","));
   return {
     "brief.json": JSON.stringify({
       title: project.title, brief: project.brief, duration: project.duration, ratio: project.ratio, look: project.look
